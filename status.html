@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<!-- Copyright (c) 2025-2026 Reid Carlisle <reid.carlisle@iapetustech.co> -->
+<!-- SPDX-License-Identifier: LicenseRef-IapetusTech-Proprietary -->
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Wormhole-RTC Status</title>
+  <style>
+    :root {
+      --bg-start: #041a35;
+      --bg-mid: #0b2b59;
+      --bg-end: #0e4b77;
+      --card-bg: rgba(255, 255, 255, 0.1);
+      --card-border: rgba(255, 255, 255, 0.2);
+      --text: #f3f9ff;
+      --muted: #bdd3ea;
+      --accent: #50b7ff;
+      --good: #31d293;
+      --warn: #ffd27d;
+      --shadow: 0 20px 35px rgba(0, 0, 0, 0.25);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+      color: var(--text);
+      background: radial-gradient(circle at 15% 20%, rgba(80, 183, 255, 0.28), transparent 28%),
+                  radial-gradient(circle at 85% 15%, rgba(49, 210, 147, 0.25), transparent 24%),
+                  linear-gradient(135deg, var(--bg-start), var(--bg-mid) 50%, var(--bg-end));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+
+    .panel {
+      width: min(1020px, 100%);
+      border-radius: 22px;
+      backdrop-filter: blur(8px);
+      border: 1px solid var(--card-border);
+      background: linear-gradient(160deg, rgba(255, 255, 255, 0.14), rgba(255, 255, 255, 0.05));
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .header {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 14px;
+      align-items: center;
+      justify-content: space-between;
+      padding: 24px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.14);
+      background: linear-gradient(90deg, rgba(80, 183, 255, 0.2), rgba(49, 210, 147, 0.12));
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-weight: 700;
+      letter-spacing: 0.2px;
+    }
+
+    .dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: var(--good);
+      box-shadow: 0 0 0 8px rgba(49, 210, 147, 0.16);
+      animation: pulse 1.8s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); opacity: 0.85; }
+      50% { transform: scale(1.18); opacity: 1; }
+    }
+
+    .header-actions {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .btn {
+      text-decoration: none;
+      color: #01233f;
+      background: #f3f9ff;
+      border: none;
+      border-radius: 999px;
+      padding: 10px 14px;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .btn.secondary {
+      color: #d8ebff;
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.25);
+    }
+
+    .content {
+      padding: 22px;
+      display: grid;
+      gap: 14px;
+      grid-template-columns: repeat(12, minmax(0, 1fr));
+    }
+
+    .card {
+      grid-column: span 12;
+      border: 1px solid var(--card-border);
+      background: var(--card-bg);
+      border-radius: 14px;
+      padding: 16px;
+    }
+
+    .card h2 {
+      margin: 0 0 10px;
+      font-size: 13px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .metric {
+      font-size: 30px;
+      font-weight: 800;
+      line-height: 1.1;
+      margin-bottom: 6px;
+    }
+
+    .sub {
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .ok {
+      color: var(--good);
+      font-weight: 700;
+    }
+
+    .warn {
+      color: var(--warn);
+      font-weight: 700;
+    }
+
+    .status-grid {
+      display: grid;
+      gap: 8px;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      margin-top: 8px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .mono {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+    }
+
+    .foot {
+      padding: 0 22px 22px;
+      color: var(--muted);
+      font-size: 12px;
+      display: flex;
+      justify-content: space-between;
+      gap: 14px;
+      flex-wrap: wrap;
+    }
+
+    @media (min-width: 780px) {
+      .card.span-4 { grid-column: span 4; }
+      .card.span-6 { grid-column: span 6; }
+      .card.span-8 { grid-column: span 8; }
+    }
+  </style>
+</head>
+<body>
+  <section class="panel">
+    <header class="header">
+      <div class="brand">
+        <span class="dot"></span>
+        <div>
+          <div style="font-size: 20px;">Wormhole-RTC Status Dashboard</div>
+          <div class="sub">No-retention operational telemetry</div>
+        </div>
+      </div>
+      <div class="header-actions">
+        <a class="btn secondary" href="/">Back To Messenger</a>
+        <button class="btn" id="refresh-btn" type="button">Refresh</button>
+      </div>
+    </header>
+
+    <div class="content">
+      <article class="card span-4">
+        <h2>Uptime</h2>
+        <div class="metric" id="uptime-human">-</div>
+        <div class="sub">Since process restart</div>
+      </article>
+
+      <article class="card span-4">
+        <h2>Active Connections</h2>
+        <div class="metric" id="active-connections">0</div>
+        <div class="sub">Current WebSocket sessions</div>
+      </article>
+
+      <article class="card span-4">
+        <h2>Total Connections</h2>
+        <div class="metric" id="total-connections">0</div>
+        <div class="sub">Made since restart</div>
+      </article>
+
+      <article class="card span-8">
+        <h2>System Load (1m / 5m / 15m)</h2>
+        <div class="metric mono" id="load-values">0.00 / 0.00 / 0.00</div>
+        <div class="sub">Host load averages from OS</div>
+      </article>
+
+      <article class="card span-4">
+        <h2>Privacy</h2>
+        <div class="sub" style="line-height: 1.6;">
+          <span class="ok">No retention mode active</span><br>
+          No IP addresses stored<br>
+          No client identifiers persisted
+        </div>
+      </article>
+
+      <article class="card span-6">
+        <h2>Server Runtime</h2>
+        <div class="status-grid">
+          <div>App</div><div class="mono" id="app-name">-</div><div></div>
+          <div>Mailboxes</div><div class="mono" id="active-mailboxes">0</div><div class="sub">currently allocated</div>
+          <div>Updated</div><div class="mono" id="updated-at">-</div><div class="sub">UTC</div>
+        </div>
+      </article>
+
+      <article class="card span-6">
+        <h2>Policy</h2>
+        <div class="sub" id="policy-text" style="line-height: 1.7;">
+          Loading policy metadata...
+        </div>
+      </article>
+    </div>
+
+    <div class="foot">
+      <span>Wormhole-RTC operational dashboard</span>
+      <span class="mono" id="polling-note">Auto-refresh: every 5s</span>
+    </div>
+  </section>
+
+  <script>
+    const ids = {
+      appName: document.getElementById('app-name'),
+      uptimeHuman: document.getElementById('uptime-human'),
+      activeConnections: document.getElementById('active-connections'),
+      totalConnections: document.getElementById('total-connections'),
+      loadValues: document.getElementById('load-values'),
+      activeMailboxes: document.getElementById('active-mailboxes'),
+      updatedAt: document.getElementById('updated-at'),
+      policyText: document.getElementById('policy-text')
+    };
+
+    function asNum(value) {
+      return Number(value || 0).toFixed(2);
+    }
+
+    async function refreshStatus() {
+      try {
+        const response = await fetch('/api/status', { cache: 'no-store' });
+        const status = await response.json();
+
+        ids.appName.textContent = status.appName || 'Wormhole-RTC';
+        ids.uptimeHuman.textContent = status.uptimeHuman || '-';
+        ids.activeConnections.textContent = String(status.websocket?.activeConnections ?? 0);
+        ids.totalConnections.textContent = String(status.websocket?.totalConnectionsSinceRestart ?? 0);
+        ids.loadValues.textContent = `${asNum(status.systemLoad?.oneMinute)} / ${asNum(status.systemLoad?.fiveMinute)} / ${asNum(status.systemLoad?.fifteenMinute)}`;
+        ids.activeMailboxes.textContent = String(status.mailboxes?.active ?? 0);
+        ids.updatedAt.textContent = status.nowIso || '-';
+        ids.policyText.innerHTML = `Retention mode: <span class="ok">${status.retentionMode || 'none'}</span><br>Only aggregate counters are shown on this page.<br><span class="warn">No IP addresses or user identifiers are tracked or displayed.</span>`;
+      } catch (err) {
+        ids.policyText.textContent = `Status unavailable: ${err.message}`;
+      }
+    }
+
+    document.getElementById('refresh-btn').addEventListener('click', refreshStatus);
+    refreshStatus();
+    setInterval(refreshStatus, 5000);
+  </script>
+</body>
+</html>

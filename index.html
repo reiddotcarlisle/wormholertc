@@ -1,0 +1,527 @@
+<!DOCTYPE html>
+<!-- Copyright (c) 2025-2026 Reid Carlisle <reid.carlisle@iapetustech.co> -->
+<!-- SPDX-License-Identifier: LicenseRef-IapetusTech-Proprietary -->
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Wormhole-RTC Messenger</title>
+  <link rel="icon" type="image/svg+xml" href="/assets/favicon.svg">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <style>
+    :root {
+      --bg-start: #041a35;
+      --bg-mid: #0b2b59;
+      --bg-end: #0e4b77;
+      --surface: rgba(255, 255, 255, 0.1);
+      --surface-strong: rgba(255, 255, 255, 0.16);
+      --surface-border: rgba(255, 255, 255, 0.22);
+      --text-main: #eef7ff;
+      --text-soft: #c6dbef;
+      --blue-accent: #50b7ff;
+      --green-accent: #31d293;
+      --shadow-deep: 0 26px 44px rgba(0, 0, 0, 0.3);
+      --shadow-soft: 0 16px 32px rgba(2, 15, 34, 0.25);
+    }
+
+    body {
+      background: radial-gradient(circle at 15% 20%, rgba(80, 183, 255, 0.24), transparent 28%),
+                  radial-gradient(circle at 84% 15%, rgba(49, 210, 147, 0.2), transparent 24%),
+                  linear-gradient(135deg, var(--bg-start), var(--bg-mid) 50%, var(--bg-end));
+      color: var(--text-main);
+    }
+
+    .app-shell {
+      backdrop-filter: blur(8px);
+      background: linear-gradient(165deg, rgba(255, 255, 255, 0.14), rgba(255, 255, 255, 0.06));
+      border: 1px solid var(--surface-border);
+      box-shadow: var(--shadow-deep);
+    }
+
+    .app-header {
+      border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+      background: linear-gradient(90deg, rgba(80, 183, 255, 0.24), rgba(49, 210, 147, 0.14));
+      backdrop-filter: blur(6px);
+    }
+
+    .pill {
+      border: 1px solid rgba(255, 255, 255, 0.28);
+      background: rgba(255, 255, 255, 0.12);
+      color: #e5f2ff;
+    }
+    .header-action {
+      border: none;
+      background: transparent;
+      color: #eaf5ff;
+      border-radius: 999px;
+      padding: 0.35rem;
+      font-size: 1rem;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 2rem;
+      height: 2rem;
+    }
+    .header-action:hover {
+      filter: brightness(1.07);
+      background: rgba(255, 255, 255, 0.12);
+    }
+
+    .toast {
+      position: fixed;
+      z-index: 50;
+      left: 50%;
+      transform: translateX(-50%);
+      min-width: 200px;
+      max-width: 90vw;
+      padding: 1rem 1.5rem;
+      border-radius: 0.5rem;
+      color: #fff;
+      font-weight: 600;
+      box-shadow: var(--shadow-soft);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s, top 0.3s;
+    }
+    .toast.show {
+      opacity: 1;
+      pointer-events: auto;
+    }
+    .toast-success { background: #22c55e; }
+    .toast-error { background: #ef4444; }
+    .toast-info { background: #3b82f6; }
+    .toast-warning { background: #f59e42; }
+    .collapsible-log {
+      max-height: 220px;
+      min-height: 72px;
+      overflow-y: auto;
+      background: rgba(8, 25, 49, 0.88);
+      color: #d7e7f7;
+      font-size: 0.95rem;
+      border-radius: 0.8rem;
+      border: 1px solid rgba(255, 255, 255, 0.16);
+      box-shadow: var(--shadow-soft);
+      padding: 0.5rem 1rem;
+    }
+    #choose-mode {
+      position: relative;
+      isolation: isolate;
+      padding: 0 1.25rem;
+    }
+    .mode-title {
+      text-align: center;
+      font-size: 2rem;
+      line-height: 1.1;
+      font-weight: 800;
+      letter-spacing: 0.01em;
+      text-shadow: 0 8px 18px rgba(0, 0, 0, 0.3);
+    }
+    .mode-subtitle {
+      text-align: center;
+      color: var(--text-soft);
+      width: 100%;
+      max-width: 60ch;
+      font-size: 0.96rem;
+      margin-top: 0.35rem;
+      margin-bottom: 0.5rem;
+      text-wrap: pretty;
+    }
+    .mode-button {
+      border: 1px solid rgba(255, 255, 255, 0.26);
+      box-shadow: var(--shadow-soft);
+      transition: transform 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease;
+    }
+    .mode-button:hover {
+      transform: translateY(-2px) scale(1.01);
+      filter: brightness(1.05);
+      box-shadow: 0 22px 34px rgba(2, 15, 34, 0.34);
+    }
+    .invite-gradient {
+      background: linear-gradient(140deg, #0685e2, #0352af 58%, #07336e);
+    }
+    .accept-gradient {
+      background: linear-gradient(140deg, #19b177, #138d82 58%, #0a5f66);
+    }
+    .overlay-card {
+      backdrop-filter: blur(10px);
+      border: 1px solid var(--surface-border);
+      background: linear-gradient(165deg, rgba(255, 255, 255, 0.94), rgba(244, 250, 255, 0.88));
+      box-shadow: var(--shadow-deep);
+    }
+    .chat-stage {
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.14), rgba(255, 255, 255, 0.03));
+    }
+    .chat-input-bar {
+      background: rgba(255, 255, 255, 0.78);
+      border-top: 1px solid rgba(255, 255, 255, 0.6);
+      backdrop-filter: blur(6px);
+    }
+    .transfer-list-panel {
+      border: 1px solid rgba(255, 255, 255, 0.28);
+      background: rgba(255, 255, 255, 0.08);
+      border-radius: 0.9rem;
+      box-shadow: 0 10px 18px rgba(4, 20, 44, 0.22);
+      overflow: hidden;
+    }
+    .transfer-list-title {
+      padding: 0.45rem 0.7rem;
+      font-size: 0.74rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #c8def2;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+      background: rgba(9, 38, 71, 0.56);
+    }
+    .transfer-item {
+      border: 1px solid rgba(255, 255, 255, 0.28);
+      background: rgba(255, 255, 255, 0.14);
+      border-radius: 0.85rem;
+      padding: 0.62rem 0.78rem;
+      color: #e5f2ff;
+      box-shadow: 0 8px 14px rgba(4, 20, 44, 0.24);
+    }
+    .transfer-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 0.8rem;
+      align-items: center;
+      font-size: 0.86rem;
+      margin-bottom: 0.36rem;
+    }
+    .transfer-name {
+      max-width: 60%;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      color: #f2f8ff;
+      font-weight: 600;
+    }
+    .transfer-meta {
+      color: #bdd3ea;
+      font-size: 0.76rem;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    .transfer-progress-track {
+      width: 100%;
+      height: 0.42rem;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.22);
+      overflow: hidden;
+    }
+    .transfer-progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #31d293, #50b7ff);
+      width: 0%;
+      transition: width 0.2s linear;
+    }
+    .transfer-actions {
+      display: flex;
+      gap: 0.45rem;
+      margin-top: 0.5rem;
+      flex-wrap: wrap;
+    }
+    .transfer-action-btn {
+      border: 1px solid rgba(255, 255, 255, 0.24);
+      background: rgba(255, 255, 255, 0.16);
+      color: #eaf4ff;
+      border-radius: 999px;
+      padding: 0.22rem 0.64rem;
+      font-size: 0.76rem;
+    }
+    .transfer-action-btn:hover {
+      filter: brightness(1.08);
+    }
+    .settings-modal {
+      width: min(760px, 94vw);
+      border-radius: 1rem;
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      background: linear-gradient(165deg, rgba(255, 255, 255, 0.96), rgba(243, 249, 255, 0.9));
+      box-shadow: var(--shadow-deep);
+      overflow: hidden;
+    }
+    .settings-tabs {
+      display: flex;
+      gap: 0.45rem;
+      padding: 0.85rem 1rem;
+      background: rgba(9, 38, 71, 0.08);
+      border-bottom: 1px solid rgba(9, 38, 71, 0.15);
+    }
+    .settings-tab-btn {
+      border: 1px solid rgba(20, 72, 118, 0.22);
+      background: rgba(255, 255, 255, 0.7);
+      color: #15466f;
+      border-radius: 999px;
+      padding: 0.32rem 0.8rem;
+      font-size: 0.8rem;
+      font-weight: 700;
+    }
+    .settings-tab-btn.active {
+      background: #0e5ca0;
+      color: #fff;
+      border-color: #0e5ca0;
+    }
+    .settings-panel {
+      display: none;
+      padding: 1rem 1.1rem;
+      color: #1d3f60;
+    }
+    .settings-panel.active {
+      display: block;
+    }
+    @keyframes incoming-call-jiggle {
+      0%, 100% { transform: translateX(0) rotate(0deg); }
+      12% { transform: translateX(-3px) rotate(-0.7deg); }
+      24% { transform: translateX(3px) rotate(0.7deg); }
+      36% { transform: translateX(-4px) rotate(-0.9deg); }
+      48% { transform: translateX(4px) rotate(0.9deg); }
+      60% { transform: translateX(-3px) rotate(-0.7deg); }
+      72% { transform: translateX(3px) rotate(0.7deg); }
+      84% { transform: translateX(-1px) rotate(-0.3deg); }
+    }
+    .incoming-call-animate {
+      animation: incoming-call-jiggle 0.9s ease-in-out infinite;
+      will-change: transform;
+    }
+    #chat-messages > .self-end {
+      background: linear-gradient(140deg, #047bd6, #045baa);
+      color: #fff;
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      box-shadow: 0 8px 14px rgba(3, 47, 97, 0.28);
+    }
+    #chat-messages > .self-start {
+      background: rgba(255, 255, 255, 0.88);
+      color: #143455;
+      border: 1px solid rgba(20, 52, 85, 0.14);
+      box-shadow: 0 8px 14px rgba(2, 15, 34, 0.12);
+    }
+    .chat-scrollbar::-webkit-scrollbar {
+      width: 8px;
+      background: rgba(176, 205, 229, 0.45);
+    }
+    .chat-scrollbar::-webkit-scrollbar-thumb {
+      background: rgba(63, 129, 184, 0.68);
+      border-radius: 4px;
+    }
+    .spinner {
+      border: 4px solid #e5e7eb;
+      border-top: 4px solid #3b82f6;
+      border-radius: 50%;
+      width: 2.5rem;
+      height: 2.5rem;
+      animation: spin 1s linear infinite;
+      margin: 0 auto;
+    }
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    @media (max-width: 768px) {
+      .mode-title {
+        font-size: 1.62rem;
+      }
+      .mode-button {
+        width: 100%;
+        max-width: 340px;
+      }
+    }
+  </style>
+</head>
+<body class="bg-gradient-to-br from-blue-900 via-slate-900 to-slate-800 min-h-screen flex items-center justify-center">
+  <div class="app-shell w-full max-w-2xl h-[90vh] flex flex-col rounded-3xl overflow-visible">
+    <!-- Header -->
+    <header class="app-header flex items-center gap-3 px-6 py-4 shadow text-white relative z-[300]">
+      <i class="fa-solid fa-comments text-2xl"></i>
+      <h1 class="text-2xl font-bold tracking-tight">Wormhole-RTC Messenger</h1>
+      <div class="ml-auto flex items-center gap-2">
+        <button id="header-audio-call-btn" type="button" class="hidden header-action" title="Start Audio Call" aria-label="Start Audio Call">
+          <i class="fa-solid fa-phone"></i>
+        </button>
+        <button id="header-video-call-btn" type="button" class="hidden header-action" title="Start Video Call" aria-label="Start Video Call">
+          <i class="fa-solid fa-video"></i>
+        </button>
+        <button id="quick-log-toggle" type="button" class="hidden header-action" aria-pressed="false" title="Show Protocol Log" aria-label="Show Protocol Log">
+          <i class="fa-solid fa-list"></i>
+        </button>
+      </div>
+      <div class="relative flex items-center gap-2">
+        <button id="chat-menu-btn" class="text-white hover:text-blue-200 text-xl p-2 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-200" title="Menu">
+          <i class="fa-solid fa-ellipsis-vertical"></i>
+        </button>
+        <div id="chat-menu" class="hidden absolute top-full right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-slate-200 z-[310] origin-top-right">
+          <button id="menu-log-toggle" class="w-full flex items-center gap-2 px-4 py-2 text-slate-700 hover:bg-slate-100 text-left"><i class="fa-solid fa-list"></i> Protocol Log</button>
+          <button id="menu-audio-call" class="w-full flex items-center gap-2 px-4 py-2 text-slate-700 hover:bg-slate-100 text-left"><i class="fa-solid fa-phone"></i> Start Audio Call</button>
+          <button id="menu-settings" class="w-full flex items-center gap-2 px-4 py-2 text-slate-700 hover:bg-slate-100 text-left"><i class="fa-solid fa-gear"></i> Settings</button>
+        </div>
+      </div>
+    </header>
+    <!-- Main Content -->
+    <main class="flex-1 flex flex-col relative overflow-hidden rounded-b-3xl">
+      <!-- Incoming Call Modal -->
+      <div id="incoming-call-modal" class="hidden fixed inset-0 flex items-center justify-center z-50 bg-black/40">
+        <div id="incoming-call-card" class="bg-white rounded-xl shadow-2xl p-8 flex flex-col items-center gap-6 min-w-[320px] max-w-xs">
+          <div class="flex flex-col items-center gap-2">
+            <i class="fa-solid fa-phone-volume text-blue-600 text-3xl"></i>
+            <span id="incoming-call-title" class="font-bold text-lg text-blue-700">Incoming Audio Call</span>
+            <span id="incoming-call-subtitle" class="text-slate-600 text-sm">Do you want to accept?</span>
+          </div>
+          <div class="flex gap-4 mt-2">
+            <button id="accept-call-btn" class="px-6 py-2 rounded-lg bg-green-600 text-white font-semibold text-lg hover:bg-green-700 flex items-center gap-2"><i class="fa-solid fa-phone"></i> Accept</button>
+            <button id="decline-call-btn" class="px-6 py-2 rounded-lg bg-red-500 text-white font-semibold text-lg hover:bg-red-600 flex items-center gap-2"><i class="fa-solid fa-phone-slash"></i> Decline</button>
+          </div>
+        </div>
+      </div>
+      <!-- Audio Call UI (hidden by default) -->
+      <div id="audio-call-ui" class="hidden flex flex-col items-center justify-center bg-white/80 border-b border-white/50 px-6 py-4 relative z-40 backdrop-blur-md">
+        <div class="flex items-center gap-4 w-full justify-between">
+          <div class="flex items-center gap-3">
+            <i id="ice-status-icon" class="fa-solid fa-circle text-gray-400 text-lg" title="ICE Status: Disconnected"></i>
+            <span id="call-status" class="font-semibold text-blue-700 text-base">Not in call</span>
+            <span id="call-timer" class="ml-2 text-xs text-slate-500 font-mono hidden"></span>
+          </div>
+          <div class="flex items-center gap-3">
+            <button id="audio-settings-btn" class="p-2 rounded-full bg-slate-200 hover:bg-slate-300 text-blue-700 text-xl" title="Audio Settings"><i class="fa-solid fa-sliders"></i></button>
+            <button id="share-screen-btn" class="hidden p-2 rounded-full bg-indigo-600 hover:bg-indigo-700 text-white text-xl" title="Share Screen"><i class="fa-solid fa-display"></i></button>
+            <button id="mute-btn" class="p-2 rounded-full bg-slate-200 hover:bg-slate-300 text-blue-700 text-xl" title="Mute/Unmute"><i class="fa-solid fa-microphone"></i></button>
+            <input id="volume-slider" type="range" min="0" max="100" value="100" class="w-20 h-2 accent-blue-500" title="Volume" />
+            <button id="hangup-btn" class="p-2 rounded-full bg-red-500 hover:bg-red-600 text-white text-xl ml-2" title="Hang Up"><i class="fa-solid fa-phone-slash"></i></button>
+          </div>
+        </div>
+        <audio id="remote-audio" autoplay class="hidden"></audio>
+        <div class="w-full mt-3 hidden" id="video-call-stage">
+          <div class="flex items-center justify-end gap-2 mb-2">
+            <button id="video-popout-btn" type="button" class="px-3 py-1.5 rounded-full bg-slate-200 text-slate-700 text-xs font-semibold hover:bg-slate-300">Popout</button>
+            <button id="video-fullscreen-btn" type="button" class="px-3 py-1.5 rounded-full bg-slate-200 text-slate-700 text-xs font-semibold hover:bg-slate-300">Fullscreen</button>
+            <button id="video-pip-btn" type="button" class="px-3 py-1.5 rounded-full bg-slate-200 text-slate-700 text-xs font-semibold hover:bg-slate-300">PiP</button>
+            <button id="video-restore-btn" type="button" class="hidden px-3 py-1.5 rounded-full bg-cyan-600 text-white text-xs font-semibold hover:bg-cyan-700">Restore</button>
+          </div>
+          <video id="remote-video" autoplay playsinline class="w-full max-h-44 rounded-lg border border-slate-200 bg-slate-900"></video>
+          <video id="local-video" autoplay playsinline muted class="mt-2 w-36 max-h-24 rounded border border-slate-300 bg-slate-900"></video>
+        </div>
+      </div>
+      <!-- Ringtone (pleasant, non-piercing) -->
+      <audio id="ringtone" src="/assets/audio/ringtone.mp3" preload="auto"></audio>
+      <!-- Choose Mode -->
+      <div id="choose-mode" class="chat-stage flex flex-col items-center justify-center h-full gap-8">
+        <div>
+          <h2 class="mode-title">Open A Secure Wormhole</h2>
+          <p class="mode-subtitle">No account. No retention. Just a one-time code and an end-to-end peer session.</p>
+        </div>
+        <button id="invite-btn" class="mode-button invite-gradient w-80 h-20 py-4 px-8 rounded-2xl text-white font-semibold text-xl transition flex items-center justify-center gap-3"><i class="fa-solid fa-paper-plane"></i> Invite</button>
+        <button id="accept-btn" class="mode-button accept-gradient w-80 h-20 py-4 px-8 rounded-2xl text-white font-semibold text-xl transition flex items-center justify-center gap-3"><i class="fa-solid fa-key"></i> Accept Invitation</button>
+      </div>
+      <!-- Invite UI -->
+      <div id="invite-ui" class="hidden absolute inset-0 flex items-center justify-center z-30">
+        <div class="overlay-card w-full max-w-md rounded-2xl flex flex-col items-center gap-6 py-10 px-8">
+          <span class="text-lg font-semibold text-slate-700">Share this code with your partner:</span>
+          <div class="flex items-center gap-2">
+            <span id="invite-code" class="font-mono text-slate-900 text-base sm:text-lg bg-slate-100 px-6 py-3 rounded-lg border border-slate-300 tracking-widest overflow-x-auto whitespace-nowrap max-w-xs sm:max-w-sm md:max-w-md" style="font-size: 1.1rem;"></span>
+            <button id="copy-code-btn" class="text-blue-600 hover:text-blue-800 text-2xl p-2 rounded-full" title="Copy"><i class="fa-solid fa-copy"></i></button>
+          </div>
+          <div id="invite-waiting" class="flex flex-col items-center gap-2 mt-2">
+            <div class="spinner"></div>
+            <span class="text-slate-500 text-sm">Waiting for other party to connect...</span>
+            <span id="invite-timeout" class="text-xs text-red-500 hidden"></span>
+          </div>
+        </div>
+      </div>
+      <!-- Accept UI -->
+      <div id="accept-ui" class="hidden absolute inset-0 flex items-center justify-center z-30">
+        <form class="overlay-card w-full max-w-md rounded-2xl flex flex-col items-center gap-6 py-10 px-8">
+          <label class="text-lg font-semibold text-slate-700" for="accept-code-input">Enter invitation code:</label>
+          <input id="accept-code-input" type="text" class="w-full px-6 py-3 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-400 font-mono text-2xl tracking-widest text-center text-slate-900 bg-slate-100" placeholder="e.g. 7-tango-echo...">
+          <button id="accept-connect-btn" type="button" class="w-full py-3 rounded-lg bg-green-600 text-white font-semibold text-xl hover:bg-green-700 transition">Connect</button>
+          <div id="accept-waiting" class="hidden flex flex-col items-center gap-2 mt-2">
+            <div class="spinner"></div>
+            <span class="text-slate-500 text-sm">Waiting for connection...</span>
+            <span id="accept-timeout" class="text-xs text-red-500 hidden"></span>
+          </div>
+        </form>
+      </div>
+      <!-- Chat UI -->
+      <div id="chat-ui" class="chat-stage hidden flex flex-col h-full relative">
+        <!-- Spinner overlay for waiting animation -->
+        <div id="chat-waiting-overlay" class="hidden absolute inset-0 flex items-center justify-center bg-white/80 z-30">
+          <div class="spinner"></div>
+        </div>
+        <div class="flex flex-row items-center px-6 pt-4 pb-2">
+          <div class="flex-1"></div>
+        </div>
+        <div class="flex flex-col gap-2 px-6">
+          <div id="protocol-log" class="collapsible-log hidden w-full z-20 mb-2"></div>
+          <div id="transfer-list-panel" class="transfer-list-panel hidden">
+            <div class="transfer-list-title">Transfer Progress</div>
+            <div id="transfer-list" class="flex flex-col gap-2 p-2"></div>
+          </div>
+        </div>
+        <div class="flex-1 overflow-y-auto px-6 py-2 flex flex-col gap-3 chat-scrollbar" id="chat-messages" style="margin-bottom: 0.5rem;">
+          <!-- Messages will be appended here -->
+        </div>
+        <form id="chat-form" class="chat-input-bar flex items-center gap-3 px-6 py-4" style="margin-top: 0.5rem;">
+          <input id="transfer-file-input" type="file" class="hidden" />
+          <input id="chat-input" type="text" class="flex-1 px-4 py-3 rounded-full border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-400 text-lg text-slate-900 placeholder-slate-500 bg-white" placeholder="Type a message... (drop or right-click to send file)" autocomplete="off" />
+          <button id="transfer-attach-btn" type="button" class="p-2 rounded-full bg-cyan-600 text-white hover:bg-cyan-700 transition flex items-center justify-center text-xl" title="Attach file">
+            <i class="fa-solid fa-paperclip"></i>
+          </button>
+          <button type="submit" class="px-5 py-3 rounded-full bg-blue-600 text-white font-bold text-lg hover:bg-blue-700 transition flex items-center gap-2"><i class="fa-solid fa-paper-plane"></i></button>
+          <button id="disconnect-btn" type="button" class="ml-2 p-2 rounded-full bg-red-500 text-white hover:bg-red-600 transition flex items-center justify-center text-xl" title="Disconnect"><i class="fa-solid fa-plug-circle-xmark"></i></button>
+        </form>
+      </div>
+      <!-- Settings Modal (About + Audio + Video) -->
+      <div id="settings-modal" class="hidden fixed inset-0 flex items-center justify-center z-50 bg-black/40">
+        <div class="settings-modal">
+          <div class="settings-tabs">
+            <button id="settings-tab-about" type="button" class="settings-tab-btn active">About</button>
+            <button id="settings-tab-audio" type="button" class="settings-tab-btn">Audio</button>
+            <button id="settings-tab-video" type="button" class="settings-tab-btn">Video</button>
+            <button id="close-settings-btn" type="button" class="ml-auto px-4 py-1.5 rounded-full bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700">Close</button>
+          </div>
+          <div id="settings-panel-about" class="settings-panel active">
+            <h3 class="font-bold text-lg mb-2 text-blue-800">About Wormhole-RTC</h3>
+            <p class="text-sm leading-6 text-slate-700">
+              Peer-to-peer communication for chat, file transfer, and calling with a no-retention signaling approach.
+              Use Audio or Video call actions from the top bar once connected in chat.
+            </p>
+          </div>
+          <div id="settings-panel-audio" class="settings-panel">
+            <h3 class="font-bold text-lg mb-3 text-blue-800">Audio Settings</h3>
+            <div class="flex flex-col gap-4">
+              <label class="flex flex-col gap-1 text-slate-700">Microphone
+                <select id="mic-select" class="w-full px-3 py-2 rounded border border-slate-300"></select>
+              </label>
+              <label class="flex flex-col gap-1 text-slate-700">Speaker
+                <select id="speaker-select" class="w-full px-3 py-2 rounded border border-slate-300"></select>
+              </label>
+            </div>
+          </div>
+          <div id="settings-panel-video" class="settings-panel">
+            <h3 class="font-bold text-lg mb-3 text-blue-800">Video Settings</h3>
+            <div class="flex flex-col gap-4">
+              <label class="flex flex-col gap-1 text-slate-700">Camera
+                <select id="camera-select" class="w-full px-3 py-2 rounded border border-slate-300"></select>
+              </label>
+              <label class="flex flex-col gap-1 text-slate-700">Video Quality
+                <select id="video-quality-select" class="w-full px-3 py-2 rounded border border-slate-300">
+                  <option value="low">Low (640x360)</option>
+                  <option value="medium" selected>Medium (1280x720)</option>
+                  <option value="high">High (1920x1080)</option>
+                </select>
+              </label>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+  <div id="toast-container" class="fixed top-6 left-1/2 -translate-x-1/2 z-50 flex flex-col gap-2 items-center"></div>
+  <script type="module" src="/sender.js"></script>
+  <script type="module" src="/receiver.js"></script>
+  <script type="module" src="/utils.js"></script>
+  <script type="module" src="/crypto.js"></script>
+  <script type="module" src="/wormhole-rtc.js"></script>
+  <script type="module" src="/index-ui.js"></script>
+</body>
+</html>
